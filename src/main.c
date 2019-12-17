@@ -115,8 +115,11 @@ int main(int argc, char *argv[]) {
 
   int i;
   struct epoll_event event;
+  memset(&event, 0, sizeof event); // keep valgrind quiet
+
   struct epoll_event *events;
-  events = calloc (10, sizeof event);
+  events = calloc(10, sizeof event);
+
   int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
 
   event.events = EPOLLIN;
@@ -133,7 +136,8 @@ int main(int argc, char *argv[]) {
 
   // resizing buffer to store lines of text for syslogging
   unsigned int syslog_buffer_size = 128;
-  char *syslog_buffer = calloc(syslog_buffer_size * sizeof(char), 1);
+  char *syslog_buffer = malloc(syslog_buffer_size * sizeof(char));
+  syslog_buffer[0] = '\0';
 
   rt_term_set();
 
@@ -150,11 +154,12 @@ int main(int argc, char *argv[]) {
         // Any other epoll reads are from child process, output to term and record
         write(STDOUT_FILENO, buffer, byte_count);
 
-        if (strcmp(buffer, "\n") == 0) {
+        if (strncmp(buffer, "\n", 1) == 0) {
           // on newline, log whatever we've got in our buffer
           if(strlen(syslog_buffer) > 0) {
             syslog(LOG_INFO, "%s", syslog_buffer);
-            syslog_buffer[0] = '\0';
+            // syslog_buffer[0] = '\0';
+            memset(syslog_buffer, 0, syslog_buffer_size * sizeof(char));
           }
         } else if (isprint(buffer[0])) {
           // If we're at the end of our buffer resize it
@@ -167,7 +172,7 @@ int main(int argc, char *argv[]) {
             }
           }
           // Append the one char in our 'buffer'
-          strcat(syslog_buffer, buffer);
+          strncat(syslog_buffer, buffer, 1);
         }
       }
     }
