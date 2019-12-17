@@ -115,11 +115,14 @@ int main(int argc, char *argv[]) {
 
   int i;
   struct epoll_event event;
-  struct epoll_event events[10];
+  struct epoll_event *events;
+  events = calloc (10, sizeof event);
   int epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+
   event.events = EPOLLIN;
   event.data.fd = STDIN_FILENO;
   epoll_ctl(epoll_fd, EPOLL_CTL_ADD, STDIN_FILENO, &event);
+
   event.events = EPOLLIN;
   event.data.fd = pty->fd;
   epoll_ctl(epoll_fd, EPOLL_CTL_ADD, pty->fd, &event);
@@ -174,6 +177,8 @@ int main(int argc, char *argv[]) {
 
   close(epoll_fd);
   close(pty->fd);
+
+  free(events);
 
   free(pty);
   kill(cpid, SIGKILL);
